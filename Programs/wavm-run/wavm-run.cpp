@@ -4,6 +4,8 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <chrono>
+#include <iostream>
 
 #include "WAVM/Emscripten/Emscripten.h"
 #include "WAVM/IR/Module.h"
@@ -28,6 +30,8 @@
 using namespace WAVM;
 using namespace WAVM::IR;
 using namespace WAVM::Runtime;
+
+using chrono_clock = std::chrono::high_resolution_clock;
 
 struct RootResolver : Resolver
 {
@@ -167,6 +171,12 @@ static int run(const CommandLineOptions& options)
 {
 	IR::Module irModule;
 
+	constexpr auto to_us = [](chrono_clock::duration d) {
+		return std::chrono::duration_cast<std::chrono::microseconds>(d).count();
+	};
+
+	const auto instantiationStartTime = chrono_clock::now();
+
 	// Load the module.
 	if(!loadModule(options.filename, irModule)) { return EXIT_FAILURE; }
 	if(options.onlyCheck) { return EXIT_SUCCESS; }
@@ -251,6 +261,11 @@ static int run(const CommandLineOptions& options)
 		Emscripten::initializeGlobals(context, irModule, moduleInstance);
 	}
 
+	const auto now = chrono_clock::now();
+	const auto instantiationDuration = now - instantiationStartTime;
+
+	const auto invokeStartTime = now;
+
 	// Look up the function export to call.
 	Function* function;
 	if(!options.functionName)
@@ -333,6 +348,12 @@ static int run(const CommandLineOptions& options)
 	Timing::Timer executionTimer;
 	IR::ValueTuple functionResults = invokeFunctionChecked(context, function, invokeArgs);
 	Timing::logTimer("Invoked function", executionTimer);
+
+	const auto invokeFinishedTime = chrono_clock::now();
+	const auto invokeDuration = invokeFinishedTime - invokeStartTime;
+
+	std::cout << "Instantiation/compile time: " << to_us(instantiationDuration) << "us\n";
+	std::cout << "Invoke/run time: " << to_us(invokeDuration) << "us\n";
 
 	if(options.functionName)
 	{
