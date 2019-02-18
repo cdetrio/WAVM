@@ -545,6 +545,7 @@ Module::Module(const std::vector<U8>& objectBytes,
 		Timing::logRatePerSecond(
 			"Loaded object", loadObjectTimer, (F64)objectBytes.size() / 1024.0 / 1024.0, "MB");
 	}
+	Log::printf(Log::output, "Object size: %lu\n", objectBytes.size());
 }
 
 Module::~Module()
