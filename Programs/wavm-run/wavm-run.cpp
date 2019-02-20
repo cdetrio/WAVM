@@ -344,9 +344,18 @@ static int run(const CommandLineOptions& options)
 		}
 	}
 
+	
 	// Invoke the function.
 	Timing::Timer executionTimer;
-	IR::ValueTuple functionResults = invokeFunctionChecked(context, function, invokeArgs);
+	IR::ValueTuple functionResults;
+
+	Runtime::catchRuntimeExceptions([&functionResults, context, function, invokeArgs]() { functionResults = invokeFunctionChecked(context, function, invokeArgs); },
+									[](Runtime::Exception* exception) {
+										Log::printf(Log::error,
+																"Runtime exception: %s",
+														 		describeException(exception).c_str());
+									});
+
 	Timing::logTimer("Invoked function", executionTimer);
 
 	const auto invokeFinishedTime = chrono_clock::now();
